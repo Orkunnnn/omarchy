@@ -294,7 +294,8 @@ Item {
     if (!pending || playerKey(player) !== pending.playerKey) return
 
     // positionChanged also fires on routine refreshes, and some players seek to
-    // zero before the next track arrives: only a return to the start counts.
+    // zero before the next track arrives: only previous returning to the start counts.
+    if (pending.actionLabel !== "Previous" || player.playbackState === MprisPlaybackState.Stopped) return
     if (player.position < 1) trackRestartTimer.restart()
   }
 
