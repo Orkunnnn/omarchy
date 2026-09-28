@@ -260,6 +260,7 @@ Item {
         playerKey: playerKey(player),
         before: beforeTrackSignature
       }
+      trackRestartTimer.stop()
       trackOsdTimer.restart()
     } else {
       Qt.callLater(function() { root.showOsd(actionLabel, iconName, player) })
@@ -270,6 +271,7 @@ Item {
     var pending = pendingTrackOsd
     pendingTrackOsd = null
     trackOsdTimer.stop()
+    trackRestartTimer.stop()
     root.showOsd(pending.actionLabel, pending.iconName, player)
   }
 
@@ -291,9 +293,18 @@ Item {
     var pending = pendingTrackOsd
     if (!pending || playerKey(player) !== pending.playerKey) return
 
-    // A seek that arrives with the metadata untouched means the command
-    // restarted the current track (previous on a track that has played a
-    // while): no track change will follow, so show the OSD as-is.
+    // positionChanged also fires on routine refreshes, and some players seek to
+    // zero before the next track arrives: only a return to the start counts.
+    if (player.position < 1) trackRestartTimer.restart()
+  }
+
+  function flushRestartedTrackOsd() {
+    var pending = pendingTrackOsd
+    if (!pending) return
+
+    // Previous restarted a track that had played a while: no track change will
+    // follow, so show the OSD as-is.
+    var player = playerForKey(pending.playerKey) || pending.player
     if (!MediaModel.trackChanged(pending.before, player) && MediaModel.hasTrackTitle(player))
       showPendingTrackOsd(player)
   }
@@ -467,6 +478,13 @@ Item {
     interval: 2000
     repeat: false
     onTriggered: root.flushPendingTrackOsd(true)
+  }
+
+  Timer {
+    id: trackRestartTimer
+    interval: 400
+    repeat: false
+    onTriggered: root.flushRestartedTrackOsd()
   }
 
   PwObjectTracker { objects: root.playbackStreams }
